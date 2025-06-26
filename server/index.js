@@ -57,6 +57,29 @@ const validateLogin = [
   body('password').notEmpty()
 ];
 
+const validateProfileUpdate = [
+  body('name').optional().trim().isLength({ min: 1 }).withMessage('Name must not be empty'),
+  body('email').optional().isEmail().normalizeEmail().withMessage('Invalid email format')
+];
+
+// Authentication middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return res.status(401).json({ success: false, message: 'Access token required' });
+  }
+
+  jwt.verify(token, JWT_SECRET, (err, user) => {
+    if (err) {
+      return res.status(403).json({ success: false, message: 'Invalid or expired token' });
+    }
+    req.user = user;
+    next();
+  });
+};
+
 // Routes
 
 // Registration endpoint
@@ -202,28 +225,161 @@ app.post('/api/login', validateLogin, async (req, res) => {
   }
 });
 
-// Protected route example
-app.get('/api/profile', (req, res) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ 
-      success: false, 
-      message: 'No token provided' 
-    });
-  }
+// Get profile endpoint (protected)
+app.get('/api/profile', authenticateToken, (req, res) => {
+  const userId = req.user.userId;
 
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+  db.get('SELECT id, email, name, created_at FROM users WHERE id = ?', [userId], (err, user) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Server error' 
+      });
+    }
+
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
     res.json({
       success: true,
-      message: 'Profile accessed successfully',
-      user: decoded
+      message: 'Profile retrieved successfully',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        created_at: user.created_at
+      }
     });
+  });
+});
+
+// Update profile endpoint (protected)
+app.put('/api/profile', authenticateToken, validateProfileUpdate, async (req, res) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Validation failed',
+        errors: errors.array() 
+      });
+    }
+
+    const userId = req.user.userId;
+    const { name, email } = req.body;
+
+    // Check if email is being updated and if it's already taken by another user
+    if (email) {
+      db.get('SELECT id FROM users WHERE email = ? AND id != ?', [email, userId], (err, row) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ 
+            success: false, 
+            message: 'Server error' 
+          });
+        }
+
+        if (row) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Email already taken by another user' 
+          });
+        }
+
+        // Proceed with update
+        updateProfile();
+      });
+    } else {
+      // No email update, proceed directly
+      updateProfile();
+    }
+
+    function updateProfile() {
+      // Build update query dynamically
+      let updateFields = [];
+      let updateValues = [];
+
+      if (name !== undefined) {
+        updateFields.push('name = ?');
+        updateValues.push(name);
+      }
+
+      if (email !== undefined) {
+        updateFields.push('email = ?');
+        updateValues.push(email);
+      }
+
+      if (updateFields.length === 0) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'No fields to update' 
+        });
+      }
+
+      updateValues.push(userId);
+      const sql = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+
+      db.run(sql, updateValues, function(err) {
+        if (err) {
+          console.error('Error updating profile:', err);
+          return res.status(500).json({ 
+            success: false, 
+            message: 'Error updating profile' 
+          });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ 
+            success: false, 
+            message: 'User not found' 
+          });
+        }
+
+        // Get updated user data
+        db.get('SELECT id, email, name, created_at FROM users WHERE id = ?', [userId], (err, user) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ 
+              success: false, 
+              message: 'Error retrieving updated profile' 
+            });
+          }
+
+          // Generate new token if email was updated
+          let newToken = null;
+          if (email !== undefined) {
+            newToken = jwt.sign(
+              { userId: user.id, email: user.email },
+              JWT_SECRET,
+              { expiresIn: '24h' }
+            );
+          }
+
+          res.json({
+            success: true,
+            message: 'Profile updated successfully',
+            token: newToken, // Only included if email was updated
+            user: {
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              created_at: user.created_at
+            }
+          });
+        });
+      });
+    }
   } catch (error) {
-    res.status(401).json({ 
+    console.error('Profile update error:', error);
+    res.status(500).json({ 
       success: false, 
-      message: 'Invalid token' 
+      message: 'Server error' 
     });
   }
 });

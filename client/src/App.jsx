@@ -53,6 +53,16 @@ function App() {
     localStorage.removeItem('token');
   };
 
+  const handleUserUpdate = (updatedUser, newToken) => {
+    // Update user state
+    setUser(updatedUser);
+    
+    // Update token if provided (when email is changed)
+    if (newToken) {
+      localStorage.setItem('token', newToken);
+    }
+  };
+
   if (loading) {
     return (
       <div className="app">
@@ -87,7 +97,11 @@ function App() {
             path="/dashboard" 
             element={
               isAuthenticated ? 
-              <Dashboard user={user} onLogout={handleLogout} /> : 
+              <Dashboard 
+                user={user} 
+                onLogout={handleLogout} 
+                onUserUpdate={handleUserUpdate}
+              /> : 
               <Navigate to="/login" replace />
             } 
           />

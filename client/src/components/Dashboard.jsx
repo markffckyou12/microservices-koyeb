@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import EditProfile from './EditProfile';
 import './Dashboard.css';
 
-const Dashboard = ({ user, onLogout }) => {
+const Dashboard = ({ user, onLogout, onUserUpdate }) => {
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showEditProfile, setShowEditProfile] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -37,6 +39,32 @@ const Dashboard = ({ user, onLogout }) => {
     onLogout();
   };
 
+  const handleEditProfile = () => {
+    setShowEditProfile(true);
+  };
+
+  const handleCancelEdit = () => {
+    setShowEditProfile(false);
+  };
+
+  const handleProfileUpdate = (updatedUser, newToken) => {
+    // Update local state
+    setProfileData(updatedUser);
+    
+    // Update parent component if callback provided
+    if (onUserUpdate) {
+      onUserUpdate(updatedUser, newToken);
+    }
+    
+    // Update token if provided (when email is changed)
+    if (newToken) {
+      localStorage.setItem('token', newToken);
+    }
+    
+    // Close the modal
+    setShowEditProfile(false);
+  };
+
   if (loading) {
     return (
       <div className="dashboard-container">
@@ -64,20 +92,34 @@ const Dashboard = ({ user, onLogout }) => {
         )}
 
         <div className="user-info">
-          <h3>User Information</h3>
+          <div className="user-info-header">
+            <h3>User Information</h3>
+            <button 
+              onClick={handleEditProfile} 
+              className="edit-profile-button"
+            >
+              Edit Profile
+            </button>
+          </div>
           <div className="info-grid">
             <div className="info-item">
               <label>Name:</label>
-              <span>{user?.name || 'Not provided'}</span>
+              <span>{profileData?.name || user?.name || 'Not provided'}</span>
             </div>
             <div className="info-item">
               <label>Email:</label>
-              <span>{user?.email}</span>
+              <span>{profileData?.email || user?.email}</span>
             </div>
             <div className="info-item">
               <label>User ID:</label>
-              <span>{user?.id}</span>
+              <span>{profileData?.id || user?.id}</span>
             </div>
+            {profileData?.created_at && (
+              <div className="info-item">
+                <label>Member Since:</label>
+                <span>{new Date(profileData.created_at).toLocaleDateString()}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -107,12 +149,21 @@ const Dashboard = ({ user, onLogout }) => {
             <button className="action-button" onClick={fetchProfile}>
               Refresh Profile
             </button>
-            <button className="action-button secondary">
-              Edit Profile (Coming Soon)
+            <button className="action-button" onClick={handleEditProfile}>
+              Edit Profile
             </button>
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <EditProfile
+          user={profileData || user}
+          onProfileUpdate={handleProfileUpdate}
+          onCancel={handleCancelEdit}
+        />
+      )}
     </div>
   );
 };
