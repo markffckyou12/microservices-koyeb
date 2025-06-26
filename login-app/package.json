@@ -1,0 +1,14 @@
+{
+  "name": "login-app",
+  "version": "1.0.0",
+  "description": "A full-stack login application",
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "install-deps": "cd frontend && npm install && cd ../backend && npm install"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+} 
