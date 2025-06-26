@@ -42,13 +42,18 @@ const ChangePassword = ({ isOpen, onClose, onSuccess }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5000/api/change-password', {
-        method: 'PUT',
+      // Get user ID from token or localStorage
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      
+      // Updated endpoint for microservice architecture
+      const response = await fetch('http://localhost:3000/api/auth/change-password', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          userId: user.id,
           currentPassword: formData.currentPassword,
           newPassword: formData.newPassword
         })
@@ -56,7 +61,7 @@ const ChangePassword = ({ isOpen, onClose, onSuccess }) => {
 
       const data = await response.json();
 
-      if (data.success) {
+      if (data.message) {
         setSuccess('Password changed successfully!');
         setFormData({
           currentPassword: '',
@@ -70,7 +75,7 @@ const ChangePassword = ({ isOpen, onClose, onSuccess }) => {
           if (onSuccess) onSuccess();
         }, 2000);
       } else {
-        setError(data.message || 'Failed to change password');
+        setError(data.error || 'Failed to change password');
       }
     } catch (err) {
       setError('Network error. Please try again.');

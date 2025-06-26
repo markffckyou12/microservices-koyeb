@@ -14,28 +14,36 @@ function App() {
     // Check if user is already logged in
     const token = localStorage.getItem('token');
     if (token) {
-      // Verify token with backend
-      fetch('http://localhost:5000/api/profile', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          setIsAuthenticated(true);
-          setUser(data.user);
-        } else {
+      // Get user data from localStorage (since we store it during login)
+      const userData = JSON.parse(localStorage.getItem('user') || 'null');
+      if (userData) {
+        // Verify token with backend using the new microservice API
+        fetch(`http://localhost:3000/api/users/profile/${userData.id}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.user) {
+            setIsAuthenticated(true);
+            setUser(data.user);
+          } else {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+          }
+        })
+        .catch(error => {
+          console.error('Token verification failed:', error);
           localStorage.removeItem('token');
-        }
-      })
-      .catch(error => {
-        console.error('Token verification failed:', error);
-        localStorage.removeItem('token');
-      })
-      .finally(() => {
+          localStorage.removeItem('user');
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+      } else {
         setLoading(false);
-      });
+      }
     } else {
       setLoading(false);
     }
@@ -45,12 +53,14 @@ function App() {
     setIsAuthenticated(true);
     setUser(userData);
     localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUser(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
   };
 
   const handleUserUpdate = (updatedUser, newToken) => {

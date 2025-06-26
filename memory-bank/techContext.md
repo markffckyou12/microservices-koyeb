@@ -1,138 +1,330 @@
-# TECH CONTEXT - TECHNICAL REQUIREMENTS & CONSTRAINTS
+# TECHNICAL CONTEXT - MICROSERVICE ARCHITECTURE
 
-## DEVELOPMENT ENVIRONMENT
+## CURRENT SYSTEM TECHNICAL ANALYSIS
 
-### Platform Requirements
-- **Operating System:** Linux (Ubuntu/Debian-based)
-- **Shell:** Bash
-- **Node.js:** Version 14+ (for modern JavaScript features)
-- **npm:** Version 6+ (for package management)
-- **Git:** For version control (optional but recommended)
+### EXISTING MONOLITHIC ARCHITECTURE
+- **Runtime:** Node.js
+- **Framework:** Express.js (single server instance)
+- **Database:** SQLite (single file: `users.db`)
+- **Authentication:** JWT tokens with bcrypt password hashing
+- **Validation:** express-validator middleware
+- **CORS:** cors middleware for cross-origin requests
+- **File Structure:** Single `index.js` file (488 lines)
 
-### Development Tools
-- **Code Editor:** VS Code or similar
-- **Browser:** Modern browser (Chrome, Firefox, Safari, Edge)
-- **Terminal:** Integrated terminal or standalone terminal
+### CURRENT API ENDPOINTS
+1. `POST /api/register` - User registration
+2. `POST /api/login` - User authentication
+3. `GET /api/profile` - Get user profile (protected)
+4. `PUT /api/profile` - Update user profile (protected)
+5. `PUT /api/change-password` - Change password (protected)
+6. `GET /api/health` - Health check
 
-## TECHNOLOGY REQUIREMENTS
-
-### Frontend Dependencies
+### CURRENT DEPENDENCIES
 ```json
 {
-  "react": "^18.0.0",
-  "react-dom": "^18.0.0",
-  "react-router-dom": "^6.0.0",
-  "axios": "^1.0.0"
-}
-```
-
-### Backend Dependencies
-```json
-{
-  "express": "^4.18.0",
   "bcryptjs": "^2.4.3",
-  "jsonwebtoken": "^9.0.0",
+  "cors": "^2.8.5", 
+  "express": "^4.18.0",
   "express-validator": "^7.0.0",
-  "cors": "^2.8.5",
+  "jsonwebtoken": "^9.0.0",
   "sqlite3": "^5.1.0"
 }
 ```
 
-### Development Dependencies
-```json
-{
-  "@vitejs/plugin-react": "^3.0.0",
-  "vite": "^4.0.0",
-  "nodemon": "^2.0.0"
-}
+## TARGET MICROSERVICE ARCHITECTURE
+
+### TECHNOLOGY STACK DECISIONS
+
+#### CORE INFRASTRUCTURE
+- **Container Platform:** Docker + Docker Compose
+- **Service Discovery:** Docker Compose networking
+- **Message Queue:** Redis (pub/sub for events)
+- **Load Balancing:** Nginx (future) / Docker Compose (initial)
+- **Configuration:** Environment variables + config files
+
+#### SERVICE-SPECIFIC TECHNOLOGIES
+
+##### API Gateway Service
+- **Framework:** Express.js
+- **Middleware:** http-proxy-middleware for routing
+- **Authentication:** JWT token validation
+- **Dependencies:**
+  ```json
+  {
+    "express": "^4.18.0",
+    "http-proxy-middleware": "^2.0.6",
+    "jsonwebtoken": "^9.0.0",
+    "cors": "^2.8.5",
+    "express-rate-limit": "^6.7.0"
+  }
+  ```
+
+##### User Service
+- **Framework:** Express.js
+- **Database:** PostgreSQL (migration from SQLite)
+- **ORM:** pg (PostgreSQL driver)
+- **Dependencies:**
+  ```json
+  {
+    "express": "^4.18.0",
+    "pg": "^8.10.0",
+    "express-validator": "^7.0.0",
+    "bcryptjs": "^2.4.3",
+    "redis": "^4.6.0"
+  }
+  ```
+
+##### Authentication Service
+- **Framework:** Express.js
+- **Session Store:** Redis
+- **Token Management:** JWT
+- **Dependencies:**
+  ```json
+  {
+    "express": "^4.18.0",
+    "jsonwebtoken": "^9.0.0",
+    "bcryptjs": "^2.4.3",
+    "redis": "^4.6.0",
+    "express-validator": "^7.0.0"
+  }
+  ```
+
+#### DATABASE ARCHITECTURE
+
+##### Current State
+- **SQLite:** Single file database (`users.db`)
+- **Schema:** Single `users` table
+  ```sql
+  CREATE TABLE users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    name TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+  ```
+
+##### Target State
+- **User Service Database:** PostgreSQL
+  ```sql
+  -- User profiles and basic info
+  CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    name VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  ```
+
+- **Authentication Service Database:** PostgreSQL + Redis
+  ```sql
+  -- Authentication credentials
+  CREATE TABLE user_credentials (
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+  ```
+
+#### COMMUNICATION ARCHITECTURE
+
+##### Service-to-Service Communication
+- **Protocol:** HTTP/REST
+- **Format:** JSON
+- **Authentication:** Service-to-service API keys
+- **Error Handling:** Standardized error responses
+
+##### Event-Driven Communication
+- **Message Broker:** Redis Pub/Sub
+- **Event Types:**
+  - `user.registered` - New user registration
+  - `user.profile.updated` - Profile changes
+  - `user.password.changed` - Password updates
+  - `auth.login.success` - Successful login
+  - `auth.login.failed` - Failed login attempt
+
+##### API Gateway Routing
+```javascript
+// Route configuration
+const routes = {
+  '/api/register': 'user-service:3001',
+  '/api/login': 'auth-service:3002', 
+  '/api/profile': 'user-service:3001',
+  '/api/change-password': 'auth-service:3002',
+  '/api/health': 'all-services'
+};
 ```
 
-## TECHNICAL CONSTRAINTS
+## IMPLEMENTATION TECHNOLOGY DETAILS
 
-### Performance
-- **Load Time:** < 3 seconds for initial page load
-- **Form Submission:** < 1 second response time
-- **Bundle Size:** < 2MB for production build
-- **Memory Usage:** < 100MB for development server
+### CONTAINERIZATION STRATEGY
 
-### Compatibility
-- **Browsers:** Modern browsers (last 2 versions)
-- **Devices:** Desktop and mobile responsive
-- **Screen Sizes:** 320px to 1920px width support
+#### Docker Configuration
+- **Base Image:** node:18-alpine (consistent across services)
+- **Multi-stage builds:** For optimized production images
+- **Health checks:** Built into each container
+- **Security:** Non-root user, minimal attack surface
 
-### Security
-- **Password Hashing:** bcrypt with salt rounds
-- **JWT Expiration:** 24 hours for development
-- **Input Validation:** Server-side validation required
-- **CORS:** Configured for localhost development
+#### Docker Compose Architecture
+```yaml
+version: '3.8'
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports: ["3000:3000"]
+    depends_on: [user-service, auth-service]
+    
+  user-service:
+    build: ./user-service
+    ports: ["3001:3001"]
+    depends_on: [postgres, redis]
+    
+  auth-service:
+    build: ./auth-service  
+    ports: ["3002:3002"]
+    depends_on: [postgres, redis]
+    
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: microservices
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+```
 
-## IMPLEMENTATION CONSTRAINTS
+### DEVELOPMENT ENVIRONMENT
 
-### Code Quality
-- **ESLint:** Basic linting rules
-- **Prettier:** Code formatting
-- **Comments:** Essential documentation
-- **Error Handling:** Comprehensive error catching
+#### Local Development Setup
+- **Node.js Version:** 18+ (LTS)
+- **Package Manager:** npm
+- **Docker Version:** 20.10+
+- **Docker Compose Version:** 2.0+
 
-### File Structure
-- **Separation:** Clear separation between frontend and backend
-- **Organization:** Logical file and folder structure
-- **Naming:** Consistent naming conventions
-- **Modularity:** Reusable components and functions
+#### Development Workflow
+1. **Code Changes:** Individual service development
+2. **Local Testing:** Service-specific unit tests
+3. **Integration Testing:** Docker Compose environment
+4. **End-to-End Testing:** Full stack testing
 
-### Development Workflow
-- **Hot Reload:** Development server with hot reload
-- **API Testing:** Easy testing of backend endpoints
-- **Error Logging:** Clear error messages and logging
-- **Debugging:** Easy debugging setup
+### MONITORING AND OBSERVABILITY
 
-## DEPLOYMENT CONSIDERATIONS
+#### Health Monitoring
+- **Health Endpoints:** `/health` on each service
+- **Metrics:** Response time, error rates, throughput
+- **Alerting:** Basic threshold-based alerts
 
-### Local Development
-- **Port Configuration:** Frontend on 3000, Backend on 5000
-- **Environment Variables:** .env files for configuration
-- **Database:** Local SQLite file or JSON storage
-- **Static Assets:** Served from public directory
+#### Logging Strategy
+- **Format:** Structured JSON logging
+- **Correlation:** Request IDs across services
+- **Aggregation:** Centralized log collection
+- **Retention:** Configurable retention policies
 
-### Future Scalability
-- **Database:** Easy migration to PostgreSQL/MySQL
-- **Authentication:** Extensible for OAuth providers
-- **API:** RESTful design for easy extension
-- **Frontend:** Component-based for easy feature addition
+#### Tracing (Basic)
+- **Request Tracking:** Unique request IDs
+- **Service Calls:** Log service-to-service calls
+- **Performance:** Track response times
 
-## TESTING REQUIREMENTS
+### SECURITY IMPLEMENTATION
 
-### Unit Testing
-- **Frontend:** Component testing with React Testing Library
-- **Backend:** API endpoint testing
-- **Coverage:** Basic coverage for critical functions
+#### Authentication Flow
+1. **Client Login:** POST to API Gateway `/api/login`
+2. **Gateway Routing:** Forward to Auth Service
+3. **Credential Validation:** Auth Service validates credentials
+4. **Token Generation:** JWT token issued by Auth Service
+5. **Token Return:** Gateway returns token to client
+6. **Subsequent Requests:** Gateway validates JWT for protected routes
 
-### Integration Testing
-- **API Testing:** End-to-end API testing
-- **User Flow:** Registration and login flow testing
-- **Error Scenarios:** Error handling validation
+#### Inter-Service Security
+- **API Keys:** Services authenticate with API keys
+- **Network Isolation:** Docker network isolation
+- **Secrets Management:** Environment variables and Docker secrets
 
-### Manual Testing
-- **Cross-browser:** Testing on different browsers
-- **Responsive:** Testing on different screen sizes
-- **Accessibility:** Basic accessibility testing
+### DATA MIGRATION STRATEGY
 
-## MONITORING & LOGGING
+#### Phase 1: Dual Write
+1. **Setup:** New PostgreSQL databases
+2. **Dual Write:** Write to both SQLite and PostgreSQL
+3. **Validation:** Ensure data consistency
+4. **Testing:** Verify all operations work
 
-### Development Logging
-- **Console Logs:** Essential debugging information
-- **Error Logs:** Detailed error information
-- **Request Logs:** API request/response logging
+#### Phase 2: Data Migration
+1. **Historical Data:** Migrate existing SQLite data
+2. **Validation:** Verify data integrity
+3. **Switch Reads:** Point reads to PostgreSQL
+4. **Monitor:** Ensure performance is acceptable
 
-### Performance Monitoring
-- **Load Times:** Page load time monitoring
-- **API Response:** API response time tracking
-- **Memory Usage:** Development server memory monitoring
+#### Phase 3: Cleanup
+1. **Remove Dual Write:** Stop writing to SQLite
+2. **Decommission:** Remove SQLite dependencies
+3. **Optimize:** Tune PostgreSQL performance
 
-## NOTES
-- Focus on simplicity and maintainability
-- Use well-established, stable technologies
-- Prioritize developer experience
-- Ensure easy setup and testing
-- Keep technical debt minimal
-- Document essential setup steps 
+### TESTING STRATEGY
+
+#### Unit Testing
+- **Framework:** Jest
+- **Coverage:** Aim for 80%+ code coverage
+- **Mocking:** Mock external dependencies
+
+#### Integration Testing
+- **Environment:** Docker Compose test environment
+- **Database:** Test-specific database instances
+- **Services:** Test service interactions
+
+#### End-to-End Testing
+- **Framework:** Supertest for API testing
+- **Scenarios:** Complete user workflows
+- **Data:** Test data management
+
+### DEPLOYMENT CONSIDERATIONS
+
+#### Local Development
+- **Hot Reload:** nodemon for development
+- **Database:** Persistent volumes for data
+- **Debugging:** Debug ports exposed
+
+#### Production Readiness
+- **Environment Variables:** All configuration externalized
+- **Secrets Management:** Secure secret handling
+- **Resource Limits:** Memory and CPU limits
+- **Restart Policies:** Automatic restart on failure
+
+### PERFORMANCE CONSIDERATIONS
+
+#### Optimization Strategies
+- **Connection Pooling:** Database connection pools
+- **Caching:** Redis caching for frequent queries
+- **Compression:** Response compression
+- **Keep-Alive:** HTTP keep-alive connections
+
+#### Scaling Strategies
+- **Horizontal Scaling:** Multiple service instances
+- **Load Balancing:** Request distribution
+- **Database Scaling:** Read replicas (future)
+
+## TECHNOLOGY VALIDATION REQUIREMENTS
+
+### Prerequisites
+- [ ] Docker and Docker Compose installed
+- [ ] Node.js 18+ installed
+- [ ] PostgreSQL client tools
+- [ ] Redis CLI tools
+
+### Validation Steps
+1. **Container Build:** Verify all services build successfully
+2. **Network Communication:** Test inter-service communication
+3. **Database Connectivity:** Verify PostgreSQL connections
+4. **Message Queue:** Test Redis pub/sub functionality
+5. **API Gateway:** Verify request routing works
+6. **End-to-End:** Complete user registration/login flow
+
+### Performance Benchmarks
+- **Response Time:** < 200ms for simple operations
+- **Throughput:** Handle concurrent requests
+- **Resource Usage:** Monitor memory and CPU usage
+- **Startup Time:** Services start within 30 seconds 

@@ -4,7 +4,8 @@ import './EditProfile.css';
 
 const EditProfile = ({ user, onProfileUpdate, onCancel }) => {
   const [formData, setFormData] = useState({
-    name: '',
+    first_name: '',
+    last_name: '',
     email: ''
   });
   const [errors, setErrors] = useState({});
@@ -14,7 +15,8 @@ const EditProfile = ({ user, onProfileUpdate, onCancel }) => {
   useEffect(() => {
     if (user) {
       setFormData({
-        name: user.name || '',
+        first_name: user.first_name || user.name || '',
+        last_name: user.last_name || '',
         email: user.email || ''
       });
     }
@@ -38,10 +40,10 @@ const EditProfile = ({ user, onProfileUpdate, onCancel }) => {
   const validateForm = () => {
     const newErrors = {};
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
+    if (!formData.first_name.trim()) {
+      newErrors.first_name = 'First name is required';
+    } else if (formData.first_name.trim().length < 2) {
+      newErrors.first_name = 'First name must be at least 2 characters';
     }
 
     if (!formData.email) {
@@ -66,13 +68,13 @@ const EditProfile = ({ user, onProfileUpdate, onCancel }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.put('http://localhost:5000/api/profile', formData, {
+      const response = await axios.put(`http://localhost:3000/api/users/profile/${user.id}`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      if (response.data.success) {
+      if (response.data.user) {
         setMessage('Profile updated successfully!');
         
         // Call the parent callback with updated user data
@@ -89,8 +91,8 @@ const EditProfile = ({ user, onProfileUpdate, onCancel }) => {
       }
     } catch (error) {
       console.error('Profile update error:', error);
-      if (error.response?.data?.message) {
-        setMessage(error.response.data.message);
+      if (error.response?.data?.error) {
+        setMessage(error.response.data.error);
       } else if (error.response?.data?.errors) {
         // Handle validation errors from server
         const serverErrors = {};
@@ -135,18 +137,33 @@ const EditProfile = ({ user, onProfileUpdate, onCancel }) => {
 
         <form onSubmit={handleSubmit} className="edit-profile-form">
           <div className="form-group">
-            <label htmlFor="name">Name</label>
+            <label htmlFor="first_name">First Name</label>
             <input
               type="text"
-              id="name"
-              name="name"
-              value={formData.name}
+              id="first_name"
+              name="first_name"
+              value={formData.first_name}
               onChange={handleChange}
-              className={errors.name ? 'error' : ''}
-              placeholder="Enter your name"
+              className={errors.first_name ? 'error' : ''}
+              placeholder="Enter your first name"
               disabled={loading}
             />
-            {errors.name && <span className="error-text">{errors.name}</span>}
+            {errors.first_name && <span className="error-text">{errors.first_name}</span>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="last_name">Last Name</label>
+            <input
+              type="text"
+              id="last_name"
+              name="last_name"
+              value={formData.last_name}
+              onChange={handleChange}
+              className={errors.last_name ? 'error' : ''}
+              placeholder="Enter your last name"
+              disabled={loading}
+            />
+            {errors.last_name && <span className="error-text">{errors.last_name}</span>}
           </div>
 
           <div className="form-group">

@@ -18,13 +18,13 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('http://localhost:5000/api/profile', {
+      const response = await axios.get(`http://localhost:3000/api/users/profile/${user.id}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
       
-      if (response.data.success) {
+      if (response.data.user) {
         setProfileData(response.data.user);
       } else {
         setError('Failed to fetch profile data');
@@ -119,7 +119,11 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
           <div className="info-grid">
             <div className="info-item">
               <label>Name:</label>
-              <span>{profileData?.name || user?.name || 'Not provided'}</span>
+              <span>
+                {profileData
+                  ? [profileData.first_name, profileData.last_name].filter(Boolean).join(' ')
+                  : [user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'Not provided'}
+              </span>
             </div>
             <div className="info-item">
               <label>Email:</label>
