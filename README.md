@@ -2,6 +2,8 @@
 
 A modern, responsive registration and login system built with React, Express.js, and SQLite for local development and testing.
 
+**🚀 Now with GitHub → Vercel automatic deployment!**
+
 ## 🚀 Features
 
 - **User Registration**: Create new accounts with email and password
@@ -12,6 +14,7 @@ A modern, responsive registration and login system built with React, Express.js,
 - **Secure Authentication**: Password hashing with bcrypt
 - **Local Database**: SQLite for data persistence
 - **Modern UI**: Clean, professional interface with animations
+- **Automatic Deployment**: GitHub → Vercel CI/CD pipeline
 
 ## 🛠️ Technology Stack
 
