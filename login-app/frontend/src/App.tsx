@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
   
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
       <div className="card w-full max-w-md mx-auto">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">
