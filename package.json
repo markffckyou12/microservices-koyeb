@@ -1,0 +1,17 @@
+{
+  "name": "login-app",
+  "version": "1.0.0",
+  "description": "Registration/Login application with React frontend and Express backend",
+  "scripts": {
+    "vercel-build": "cd client && npm install && npm run build",
+    "build": "cd client && npm install && npm run build",
+    "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm run dev\"",
+    "start": "cd server && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
