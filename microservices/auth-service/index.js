@@ -24,10 +24,11 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    // Allow localhost development servers
+    // Allow localhost development servers and production domain
     const allowedOrigins = [
       'http://localhost:5173',
       'http://localhost:5174',
+      'https://new3-seven-beta.vercel.app',
       process.env.CLIENT_URL
     ].filter(Boolean); // Remove undefined values
     

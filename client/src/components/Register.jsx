@@ -8,7 +8,9 @@ const Register = ({ onLogin }) => {
     username: '',
     email: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    firstName: '',
+    lastName: ''
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -39,16 +41,13 @@ const Register = ({ onLogin }) => {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:3000/api/users/register', {
-        username: formData.username,
-        email: formData.email,
-        password: formData.password
-      });
-      if (response.data.user) {
-        setMessage('Registration successful! Please login.');
-        setFormData({ username: '', email: '', password: '', confirmPassword: '' });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await axios.post(`${apiUrl}/api/users/register`, formData);
+      if (response.data.message) {
+        setMessage(response.data.message);
+        setFormData({ username: '', email: '', password: '', confirmPassword: '', firstName: '', lastName: '' });
       } else {
-        setMessage(response.data.message || 'Registration failed');
+        setMessage(response.data.error || 'Registration failed');
       }
     } catch (error) {
       if (error.response?.data?.error) setMessage(error.response.data.error);
@@ -83,6 +82,16 @@ const Register = ({ onLogin }) => {
             <label htmlFor="confirmPassword">Confirm Password</label>
             <input type="password" id="confirmPassword" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className={errors.confirmPassword ? 'error' : ''} placeholder="Confirm your password" disabled={loading} />
             {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
+          </div>
+          <div className="form-group">
+            <label htmlFor="firstName">First Name</label>
+            <input type="text" id="firstName" name="firstName" value={formData.firstName} onChange={handleChange} className={errors.firstName ? 'error' : ''} placeholder="Enter your first name" disabled={loading} />
+            {errors.firstName && <span className="error-text">{errors.firstName}</span>}
+          </div>
+          <div className="form-group">
+            <label htmlFor="lastName">Last Name</label>
+            <input type="text" id="lastName" name="lastName" value={formData.lastName} onChange={handleChange} className={errors.lastName ? 'error' : ''} placeholder="Enter your last name" disabled={loading} />
+            {errors.lastName && <span className="error-text">{errors.lastName}</span>}
           </div>
           <button type="submit" className="auth-button" disabled={loading}>{loading ? 'Registering...' : 'Register'}</button>
         </form>

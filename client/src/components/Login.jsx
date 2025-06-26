@@ -33,7 +33,8 @@ const Login = ({ onLogin }) => {
     if (!validateForm()) return;
     setLoading(true);
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/login', formData);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await axios.post(`${apiUrl}/api/auth/login`, formData);
       if (response.data.token) {
         onLogin(response.data.user, response.data.token);
         setMessage('Login successful!');

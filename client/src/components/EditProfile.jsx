@@ -59,51 +59,22 @@ const EditProfile = ({ user, onProfileUpdate, onCancel }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setLoading(true);
-
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.put(`http://localhost:3000/api/users/profile/${user.id}`, formData, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const response = await axios.put(`${apiUrl}/api/users/profile/${user.id}`, formData, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      
       if (response.data.user) {
         setMessage('Profile updated successfully!');
-        
-        // Call the parent callback with updated user data
-        if (onProfileUpdate) {
-          onProfileUpdate(response.data.user, response.data.token);
-        }
-        
-        // Auto-close after 2 seconds
-        setTimeout(() => {
-          if (onCancel) onCancel();
-        }, 2000);
+        onProfileUpdate(response.data.user);
       } else {
-        setMessage(response.data.message || 'Failed to update profile');
+        setMessage(response.data.error || 'Update failed');
       }
     } catch (error) {
-      console.error('Profile update error:', error);
-      if (error.response?.data?.error) {
-        setMessage(error.response.data.error);
-      } else if (error.response?.data?.errors) {
-        // Handle validation errors from server
-        const serverErrors = {};
-        error.response.data.errors.forEach(err => {
-          serverErrors[err.path] = err.msg;
-        });
-        setErrors(serverErrors);
-        setMessage('Please fix the validation errors');
-      } else {
-        setMessage('An error occurred while updating profile');
-      }
+      if (error.response?.data?.error) setMessage(error.response.data.error);
+      else setMessage('An error occurred while updating profile');
     } finally {
       setLoading(false);
     }

@@ -17,11 +17,10 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
 
   const fetchProfile = async () => {
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('token');
-      const response = await axios.get(`http://localhost:3000/api/users/profile/${user.id}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+      const response = await axios.get(`${apiUrl}/api/users/profile/${user.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
       
       if (response.data.user) {

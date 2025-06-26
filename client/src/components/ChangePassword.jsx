@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import './ChangePassword.css';
+import axios from 'axios';
 
 const ChangePassword = ({ isOpen, onClose, onSuccess }) => {
   const [formData, setFormData] = useState({
@@ -10,6 +11,7 @@ const ChangePassword = ({ isOpen, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [message, setMessage] = useState('');
 
   const handleChange = (e) => {
     setFormData({
@@ -23,65 +25,50 @@ const ChangePassword = ({ isOpen, onClose, onSuccess }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage('');
+    if (!validateForm()) return;
     setLoading(true);
-    setError('');
-    setSuccess('');
-
-    // Validation
-    if (formData.newPassword !== formData.confirmPassword) {
-      setError('New passwords do not match');
-      setLoading(false);
-      return;
-    }
-
-    if (formData.newPassword.length < 6) {
-      setError('New password must be at least 6 characters');
-      setLoading(false);
-      return;
-    }
-
     try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
       const token = localStorage.getItem('token');
       // Get user ID from token or localStorage
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       
-      // Updated endpoint for microservice architecture
-      const response = await fetch('http://localhost:3000/api/auth/change-password', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          currentPassword: formData.currentPassword,
-          newPassword: formData.newPassword
-        })
+      const response = await axios.post(`${apiUrl}/api/auth/change-password`, {
+        userId: user.id,
+        currentPassword: formData.currentPassword,
+        newPassword: formData.newPassword
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-
-      const data = await response.json();
-
-      if (data.message) {
-        setSuccess('Password changed successfully!');
-        setFormData({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        });
-        
-        // Close modal after 2 seconds
-        setTimeout(() => {
-          onClose();
-          if (onSuccess) onSuccess();
-        }, 2000);
+      if (response.data.message) {
+        setMessage(response.data.message);
+        setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        if (onSuccess) onSuccess();
       } else {
-        setError(data.error || 'Failed to change password');
+        setMessage(response.data.error || 'Password change failed');
       }
-    } catch (err) {
-      setError('Network error. Please try again.');
+    } catch (error) {
+      if (error.response?.data?.error) setMessage(error.response.data.error);
+      else setMessage('An error occurred while changing password');
     } finally {
       setLoading(false);
     }
+  };
+
+  const validateForm = () => {
+    // Validation
+    if (formData.newPassword !== formData.confirmPassword) {
+      setError('New passwords do not match');
+      return false;
+    }
+
+    if (formData.newPassword.length < 6) {
+      setError('New password must be at least 6 characters');
+      return false;
+    }
+
+    return true;
   };
 
   if (!isOpen) return null;
@@ -136,6 +123,7 @@ const ChangePassword = ({ isOpen, onClose, onSuccess }) => {
 
           {error && <div className="error-message">{error}</div>}
           {success && <div className="success-message">{success}</div>}
+          {message && <div className="success-message">{message}</div>}
 
           <div className="form-actions">
             <button 
