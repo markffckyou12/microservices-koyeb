@@ -35,16 +35,16 @@ const ChangePassword = ({ isOpen, onClose, onSuccess }) => {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
       
       const response = await axios.post(`${apiUrl}/api/auth/change-password`, {
-        userId: user.id,
-        currentPassword: formData.currentPassword,
-        newPassword: formData.newPassword
+          userId: user.id,
+          currentPassword: formData.currentPassword,
+          newPassword: formData.newPassword
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.message) {
         setMessage(response.data.message);
         setFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        if (onSuccess) onSuccess();
+          if (onSuccess) onSuccess();
       } else {
         setMessage(response.data.error || 'Password change failed');
       }

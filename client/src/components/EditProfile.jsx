@@ -63,6 +63,7 @@ const EditProfile = ({ user, onProfileUpdate, onCancel }) => {
     setLoading(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const token = localStorage.getItem('token');
       const response = await axios.put(`${apiUrl}/api/users/profile/${user.id}`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });

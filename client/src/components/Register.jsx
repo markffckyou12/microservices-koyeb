@@ -42,7 +42,14 @@ const Register = ({ onLogin }) => {
     setLoading(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const response = await axios.post(`${apiUrl}/api/users/register`, formData);
+      const requestData = {
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+        first_name: formData.firstName,
+        last_name: formData.lastName
+      };
+      const response = await axios.post(`${apiUrl}/api/users/register`, requestData);
       if (response.data.message) {
         setMessage(response.data.message);
         setFormData({ username: '', email: '', password: '', confirmPassword: '', firstName: '', lastName: '' });
