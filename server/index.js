@@ -62,6 +62,11 @@ const validateProfileUpdate = [
   body('email').optional().isEmail().normalizeEmail().withMessage('Invalid email format')
 ];
 
+const validatePasswordChange = [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
+];
+
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -377,6 +382,77 @@ app.put('/api/profile', authenticateToken, validateProfileUpdate, async (req, re
     }
   } catch (error) {
     console.error('Profile update error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error' 
+    });
+  }
+});
+
+// Change password endpoint (protected)
+app.put('/api/change-password', authenticateToken, validatePasswordChange, async (req, res) => {
+  try {
+    // Check for validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Validation failed',
+        errors: errors.array() 
+      });
+    }
+
+    const userId = req.user.userId;
+    const { currentPassword, newPassword } = req.body;
+
+    // Get current user data
+    db.get('SELECT * FROM users WHERE id = ?', [userId], async (err, user) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Server error' 
+        });
+      }
+
+      if (!user) {
+        return res.status(404).json({ 
+          success: false, 
+          message: 'User not found' 
+        });
+      }
+
+      // Verify current password
+      const isValidCurrentPassword = await bcrypt.compare(currentPassword, user.password);
+      if (!isValidCurrentPassword) {
+        return res.status(401).json({ 
+          success: false, 
+          message: 'Current password is incorrect' 
+        });
+      }
+
+      // Hash new password
+      const saltRounds = 10;
+      const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      // Update password in database
+      db.run('UPDATE users SET password = ? WHERE id = ?', [hashedNewPassword, userId], function(err) {
+        if (err) {
+          console.error('Error updating password:', err);
+          return res.status(500).json({ 
+            success: false, 
+            message: 'Error updating password' 
+          });
+        }
+
+        res.json({
+          success: true,
+          message: 'Password changed successfully'
+        });
+      });
+    });
+  } catch (error) {
+    console.error('Password change error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Server error' 

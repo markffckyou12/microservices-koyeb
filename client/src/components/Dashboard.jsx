@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import EditProfile from './EditProfile';
+import ChangePassword from './ChangePassword';
 import './Dashboard.css';
 
 const Dashboard = ({ user, onLogout, onUserUpdate }) => {
@@ -8,6 +9,7 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   useEffect(() => {
     fetchProfile();
@@ -63,6 +65,19 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
     
     // Close the modal
     setShowEditProfile(false);
+  };
+
+  const handleChangePassword = () => {
+    setShowChangePassword(true);
+  };
+
+  const handleCancelChangePassword = () => {
+    setShowChangePassword(false);
+  };
+
+  const handlePasswordChangeSuccess = () => {
+    // Could add any additional logic here after password change
+    console.log('Password changed successfully');
   };
 
   if (loading) {
@@ -152,6 +167,9 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
             <button className="action-button" onClick={handleEditProfile}>
               Edit Profile
             </button>
+            <button className="action-button" onClick={handleChangePassword}>
+              Change Password
+            </button>
           </div>
         </div>
       </div>
@@ -162,6 +180,15 @@ const Dashboard = ({ user, onLogout, onUserUpdate }) => {
           user={profileData || user}
           onProfileUpdate={handleProfileUpdate}
           onCancel={handleCancelEdit}
+        />
+      )}
+
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <ChangePassword
+          isOpen={showChangePassword}
+          onClose={handleCancelChangePassword}
+          onSuccess={handlePasswordChangeSuccess}
         />
       )}
     </div>
