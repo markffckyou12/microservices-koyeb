@@ -42,7 +42,7 @@ const Register = ({ onLogin }) => {
     setLoading(true);
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-      const requestData = {
+      const { confirmPassword, ...requestData } = {
         username: formData.username,
         email: formData.email,
         password: formData.password,
